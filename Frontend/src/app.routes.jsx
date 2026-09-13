@@ -4,6 +4,8 @@ import Register from "./features/auth/pages/Register";
 import Protected from "./features/auth/components/Protected";
 import Home from "./features/interview/pages/Home";
 import Interview from "./features/interview/pages/Interview";
+import PracticeHistory from "./features/interview/pages/PracticeHistory";
+import PracticeAttemptDetail from "./features/interview/pages/PracticeAttemptDetail";
 
 
 export const router = createBrowserRouter([
@@ -22,5 +24,13 @@ export const router = createBrowserRouter([
     {
         path:"/interview/:interviewId",
         element: <Protected><Interview /></Protected>
+    },
+    {
+        path: "/practice-history",
+        element: <Protected><PracticeHistory /></Protected>
+    },
+    {
+        path: "/practice-history/:attemptId",
+        element: <Protected><PracticeAttemptDetail /></Protected>
     }
 ])
