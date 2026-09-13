@@ -8,6 +8,160 @@ const ai = new GoogleGenAI({
 })
 
 
+
+/**
+ * @description
+ * Custom error thrown whenever the Gemini API rate limit is hit.
+ * Carries a clear, user-facing message and whether it's the
+ * hard daily quota (no point retrying soon) or a short-lived limit.
+ */
+class RateLimitError extends Error {
+
+    constructor({ message, isDailyLimit, retryAfterSeconds }) {
+
+        super(message)
+
+        this.name = "RateLimitError"
+        this.isDailyLimit = isDailyLimit
+        this.retryAfterSeconds = retryAfterSeconds
+
+    }
+
+}
+
+
+
+/**
+ * @description
+ * Reads the Gemini SDK's raw 429 error (its `message` is a JSON
+ * string) and pulls out the retry delay and whether the violated
+ * quota is a per-day quota (i.e. no use retrying for a while).
+ */
+function parseRateLimitDetails(error) {
+
+    try {
+
+        const parsed = JSON.parse(error.message)
+
+        const details = parsed?.error?.details || []
+
+        const retryInfo = details.find(
+            detail => detail["@type"]?.includes("RetryInfo")
+        )
+
+        const quotaFailure = details.find(
+            detail => detail["@type"]?.includes("QuotaFailure")
+        )
+
+        const quotaId =
+            quotaFailure?.violations?.[0]?.quotaId || ""
+
+        const retryAfterSeconds =
+            retryInfo?.retryDelay
+                ? parseFloat(retryInfo.retryDelay.replace("s", ""))
+                : null
+
+        const isDailyLimit =
+            quotaId.toLowerCase().includes("perday")
+
+        return { retryAfterSeconds, isDailyLimit }
+
+    } catch (parseError) {
+
+        return { retryAfterSeconds: null, isDailyLimit: false }
+
+    }
+
+}
+
+
+
+/**
+ * @description
+ * Wraps ai.models.generateContent with rate-limit awareness.
+ * Short-lived limits are retried automatically a couple of times.
+ * The hard daily free-tier limit fails fast with a clear message
+ * instead of a generic "please try again".
+ */
+async function generateContentWithRetry(params, maxRetries = 2) {
+
+    let attempt = 0
+
+    while (true) {
+
+        try {
+
+            return await ai.models.generateContent(params)
+
+        } catch (error) {
+
+            if (error?.status !== 429) {
+
+                throw error
+
+            }
+
+
+            const { retryAfterSeconds, isDailyLimit } =
+                parseRateLimitDetails(error)
+
+
+            if (isDailyLimit) {
+
+                throw new RateLimitError({
+
+                    message:
+                        "You've reached today's AI usage limit (the free tier allows 20 requests/day). Please try again after the quota resets, or upgrade your Google AI plan for a higher limit.",
+
+                    isDailyLimit: true,
+
+                    retryAfterSeconds
+
+                })
+
+            }
+
+
+            const canRetry =
+                attempt < maxRetries &&
+                retryAfterSeconds &&
+                retryAfterSeconds <= 30
+
+            if (canRetry) {
+
+                attempt++
+
+                await new Promise(
+                    resolve => setTimeout(
+                        resolve,
+                        (retryAfterSeconds * 1000) + 500
+                    )
+                )
+
+                continue
+
+            }
+
+
+            throw new RateLimitError({
+
+                message:
+                    "The AI service is temporarily busy due to rate limits. Please wait a moment and try again.",
+
+                isDailyLimit: false,
+
+                retryAfterSeconds
+
+            })
+
+        }
+
+    }
+
+}
+
+
+
 const interviewReportSchema = z.object({
     matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job describe"),
     technicalQuestions: z.array(z.object({
@@ -32,6 +186,63 @@ const interviewReportSchema = z.object({
     title: z.string().describe("The title of the job for which the interview report is generated"),
 })
 
+
+const practiceEvaluationSchema = z.object({
+    score: z.number().describe("Score between 0 and 10 for the candidate's answer"),
+
+    feedback: z.string().describe(
+        "Overall feedback on the candidate's answer"
+    ),
+
+    strengths: z.array(z.string()).describe(
+        "Things the candidate explained correctly or did well"
+    ),
+
+    improvements: z.array(z.string()).describe(
+        "Things the candidate should improve or include"
+    ),
+
+    idealAnswer: z.string().describe(
+        "A concise ideal answer that demonstrates what a strong candidate should say"
+    )
+})
+
+
+const practiceQuestionsSchema = z.object({
+    questions: z.array(
+        z.object({
+            question: z.string().describe(
+                "A fresh technical interview question relevant to the candidate's job role and skills"
+            ),
+            intention: z.string().describe(
+                "The interviewer's intention behind asking this question"
+            )
+        })
+    ).length(4).describe(
+        "Exactly 4 fresh technical interview questions"
+    )
+})
+
+
+
+const practiceSummarySchema = z.object({
+
+    overallScore: z.number().min(0).max(10).describe(
+        "Overall score for the candidate's complete practice interview"
+    ),
+
+    overallFeedback: z.string().describe(
+        "Overall feedback about the candidate's performance"
+    ),
+
+    areasToImprove: z.array(z.string()).describe(
+        "Important areas the candidate should improve"
+    )
+
+})
+
+
+
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
 
@@ -41,7 +252,7 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
                         Job Description: ${jobDescription}
 `
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
@@ -95,7 +306,7 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
                         The resume should not be so lengthy, it should ideally be 1-2 pages long when converted to PDF. Focus on quality rather than quantity and make sure to include all the relevant information that can increase the candidate's chances of getting an interview call for the given job description.
                     `
 
-    const response = await ai.models.generateContent({
+    const response = await generateContentWithRetry({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
@@ -113,4 +324,166 @@ async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
 }
 
-module.exports = { generateInterviewReport, generateResumePdf }
+
+async function evaluatePracticeAnswer({
+    question,
+    answer,
+    intention
+}) {
+
+    const prompt = `
+You are an expert technical interviewer.
+
+Evaluate the candidate's answer to the interview question.
+
+Interview Question:
+${question}
+
+Candidate's Answer:
+${answer}
+
+Interviewer's Intention:
+${intention}
+
+Evaluate the answer fairly based on:
+
+1. Technical correctness
+2. Understanding of the concept
+3. Completeness
+4. Clarity
+5. Important points that were missed
+
+Give a score from 0 to 10.
+
+Return:
+- score
+- feedback
+- strengths
+- improvements
+- idealAnswer
+`
+
+    const response = await generateContentWithRetry({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: zodToJsonSchema(practiceEvaluationSchema)
+        }
+    })
+
+    return JSON.parse(response.text)
+}
+
+
+async function generatePracticeQuestions({
+    jobDescription,
+    skillGaps,
+    previousQuestions
+}) {
+
+    const prompt = `
+You are an expert technical interviewer.
+
+Generate exactly 4 NEW technical interview questions for a candidate.
+
+Job Description:
+${jobDescription}
+
+Candidate Skill Gaps:
+${JSON.stringify(skillGaps)}
+
+Questions that have already been asked:
+${JSON.stringify(previousQuestions)}
+
+IMPORTANT RULES:
+
+1. Generate exactly 4 questions.
+2. Questions must be relevant to the job description.
+3. Questions should test different technical concepts.
+4. DO NOT repeat any question from the previous questions.
+5. DO NOT create questions that are just slightly reworded versions of previous questions.
+6. Questions should be appropriate for an actual technical interview.
+7. Mix conceptual, practical, debugging, problem-solving, and scenario-based questions where appropriate.
+8. Focus especially on technologies and skills relevant to the candidate's role and skill gaps.
+9. Each question must have an interviewer's intention explaining what the interviewer wants to evaluate.
+
+Return only the requested JSON structure.
+`
+
+    const response = await generateContentWithRetry({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: zodToJsonSchema(
+                practiceQuestionsSchema
+            )
+        }
+    })
+
+    return JSON.parse(response.text)
+}
+
+
+
+async function generatePracticeSummary({
+    questions
+}) {
+
+    const prompt = `
+You are an expert technical interviewer.
+
+Analyze the candidate's complete practice interview performance.
+
+Here are the questions, candidate answers, scores and feedback:
+
+${JSON.stringify(questions)}
+
+Based on the complete performance:
+
+1. Give an overall score from 0 to 10.
+2. Give clear overall feedback about the candidate's performance.
+3. Identify the most important areas the candidate should improve.
+
+Consider:
+- Technical correctness
+- Understanding of concepts
+- Completeness
+- Clarity
+- Consistency across answers
+- Repeated weaknesses
+
+Return only the requested JSON structure.
+`
+
+    const response = await generateContentWithRetry({
+
+        model: "gemini-3-flash-preview",
+
+        contents: prompt,
+
+        config: {
+
+            responseMimeType: "application/json",
+
+            responseSchema:
+                zodToJsonSchema(practiceSummarySchema)
+
+        }
+
+    })
+
+    return JSON.parse(response.text)
+
+}
+
+
+module.exports = { 
+    generateInterviewReport, 
+    generateResumePdf, 
+    evaluatePracticeAnswer,  
+    generatePracticeQuestions, 
+    generatePracticeSummary,
+    RateLimitError
+} 
