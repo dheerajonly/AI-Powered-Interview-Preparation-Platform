@@ -1,18 +1,19 @@
-// ── Shared Variables (mirrors home.scss theme) ────────────────────────────────
-$bg-page: #0d1117;
-$bg-card: #161b22;
-$bg-panel: #1c2230;
-$bg-input: #1e2535;
-$border-color: #2a3348;
-$text-primary: #e6edf3;
-$text-muted: #7d8590;
-$accent: #ff2d78;
-$font-stack: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+// ── Shared Variables — "On-Air Studio" theme (mirrors shared tokens) ──────────
+$bg-page: #171B23;
+$bg-card: #1C212C;
+$bg-panel: #20263352;
+$bg-input: #171B23;
+$border-color: #2B3140;
+$text-primary: #F2EFE9;
+$text-muted: #8B93A3;
+$accent: #D9A441;
+$font-stack: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-display: 'Oswald', Arial, sans-serif;
 
 // severity palette
-$severity-high: #ff4d4d;
-$severity-medium: #f5a623;
-$severity-low: #3fb950;
+$severity-high: #E5484D;
+$severity-medium: #D9A441;
+$severity-low: #6FBF8B;
 
 *::-webkit-scrollbar {
     display: none;
@@ -544,4 +545,284 @@ $severity-low: #3fb950;
         background-color: rgba($severity-low, 0.1);
         border-color: rgba($severity-low, 0.25);
     }
+
+
+    .practice-intro {
+    background-color: $bg-panel;
+    border: 1px solid $border-color;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+
+    h3 {
+        font-family: $font-display;
+        margin: 0 0 0.75rem;
+        font-size: 1.3rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+        color: $text-primary;
+    }
+
+    p {
+        margin: 0 auto 1.5rem;
+        max-width: 500px;
+        color: $text-muted;
+        line-height: 1.6;
+        font-size: 0.9rem;
+    }
+}
+
+    
+    .practice-question {
+    background-color: $bg-panel;
+    border: 1px solid $border-color;
+    border-radius: 0.75rem;
+    padding: 2rem;
+
+    &__number {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: $font-display;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: $accent;
+        background-color: rgba($accent, 0.1);
+        border: 1px solid rgba($accent, 0.25);
+        padding: 0.3rem 0.7rem;
+        border-radius: 0.3rem;
+        margin-bottom: 1rem;
+
+        &::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: $severity-high;
+        }
+    }
+
+    h3 {
+        margin: 0 0 1.5rem;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: $text-primary;
+    }
+}
+
+.practice-answer {
+    width: 100%;
+    min-height: 180px;
+    resize: vertical;
+    box-sizing: border-box;
+
+    background-color: $bg-input;
+    border: 1px solid $border-color;
+    border-radius: 0.5rem;
+
+    color: $text-primary;
+    font-family: $font-stack;
+    font-size: 0.9rem;
+    line-height: 1.6;
+
+    padding: 1rem;
+    margin-bottom: 1rem;
+
+    outline: none;
+
+    &:focus {
+        border-color: $accent;
+    }
+
+    &::placeholder {
+        color: $text-muted;
+    }
+}
+
+
+.practice-question-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin-top: 1rem;
+}
+
+.practice-question-score {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.practice-question-score strong {
+    font-size: 1rem;
+}
+
+
+// ── Per-Question AI Feedback ────────────────────────────────────────────────
+.practice-feedback {
+    background-color: $bg-panel;
+    border: 1px solid $border-color;
+    border-radius: 0.75rem;
+    padding: 1.75rem;
+    margin-top: 1.25rem;
+
+    h4 {
+        margin: 1.25rem 0 0.5rem;
+        font-size: 0.95rem;
+        color: $text-primary;
+
+        &:first-child {
+            margin-top: 0;
+        }
+    }
+
+    h5 {
+        margin: 1rem 0 0.4rem;
+        font-size: 0.85rem;
+        color: $text-muted;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    p {
+        color: $text-primary;
+        line-height: 1.6;
+        font-size: 0.9rem;
+        margin: 0 0 0.5rem;
+    }
+
+    ul {
+        margin: 0 0 0.5rem;
+        padding-left: 1.2rem;
+
+        li {
+            color: $text-primary;
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+    }
+
+    > button {
+        margin-top: 1.5rem;
+    }
+}
+
+
+// ── Practice Complete Screen ─────────────────────────────────────────────────
+.practice-complete {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid $border-color;
+
+    h3 {
+        font-family: $font-display;
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+        color: $text-primary;
+        margin-bottom: 0.5rem;
+    }
+
+    > p {
+        color: $text-muted;
+        margin-bottom: 1rem;
+    }
+
+    h4 {
+        text-align: left;
+        margin: 1.5rem 0 0.5rem;
+        font-size: 0.9rem;
+        color: $text-muted;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    p {
+        text-align: left;
+        color: $text-primary;
+        line-height: 1.6;
+        font-size: 0.9rem;
+    }
+
+    ul {
+        text-align: left;
+        margin: 0 0 0.5rem;
+        padding-left: 1.2rem;
+
+        li {
+            color: $text-primary;
+            line-height: 1.6;
+            font-size: 0.9rem;
+        }
+    }
+
+    > button {
+        margin-top: 1.5rem;
+    }
+}
+
+.practice-overall-score {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: $accent;
+    text-align: center;
+    margin: 0.5rem 0 1rem;
+}
+
+
+// ── Save Status Banner (on the complete screen) ─────────────────────────────
+.practice-save-status {
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    color: $text-muted;
+    background-color: $bg-panel;
+    border: 1px solid $border-color;
+
+    &--success {
+        color: $severity-low;
+        background-color: rgba($severity-low, 0.1);
+        border-color: rgba($severity-low, 0.3);
+    }
+
+    &--error {
+        color: $severity-high;
+        background-color: rgba($severity-high, 0.1);
+        border-color: rgba($severity-high, 0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+
+        p {
+            margin: 0;
+            color: inherit;
+            text-align: center;
+        }
+    }
+}
+
+
+// ── Inline Error Banner (question generation / answer submit failures) ──────
+.practice-inline-error {
+    text-align: center;
+    font-size: 0.9rem;
+    color: $severity-high;
+    background-color: rgba($severity-high, 0.1);
+    border: 1px solid rgba($severity-high, 0.3);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+}
+
 }

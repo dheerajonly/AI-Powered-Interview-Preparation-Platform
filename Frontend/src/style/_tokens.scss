@@ -1,0 +1,34 @@
+// ── Shared Design Tokens — "On-Air Studio" ────────────────────────────────────
+// A single source of truth for the app's shell (global styles, buttons, auth).
+// Theme: practicing an interview feels like being on air — a studio desk,
+// a recording indicator, brass lower-third graphics for scores and feedback.
+
+$bg-page:        #171B23;
+$bg-card:        #1C212C;
+$bg-panel:       #20263352;
+$bg-panel-solid: #202633;
+$bg-input:       #171B23;
+$border-color:   #2B3140;
+$border-strong:  #3A4155;
+
+$text-primary:   #F2EFE9;
+$text-muted:     #8B93A3;
+$text-dim:       #6B7385;
+
+$accent:         #D9A441;
+$accent-hover:   #C4903A;
+$accent-dark:    #171B23;
+$on-air:         #E5484D;
+
+$score-high:     #6FBF8B;
+$score-mid:      #D9A441;
+$score-low:      #E5484D;
+
+$radius-sm:      0.4rem;
+$radius-md:      0.6rem;
+$radius-lg:      0.85rem;
+
+$transition-fast: all 0.15s ease;
+
+$font-stack: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-display: 'Oswald', Arial, sans-serif;

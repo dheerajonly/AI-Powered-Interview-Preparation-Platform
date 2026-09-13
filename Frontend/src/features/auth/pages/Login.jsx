@@ -30,8 +30,9 @@ const Login = () => {
 
     if (loading) {
         return (
-            <main>
-                <h1>Loading.......</h1>
+            <main className='loading-screen'>
+                <div className='spinner' />
+                <h1>Logging you in...</h1>
             </main>
         )
     }

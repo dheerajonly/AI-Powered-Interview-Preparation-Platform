@@ -1,0 +1,277 @@
+// ── Variables — "On-Air Studio" theme (mirrors shared tokens) ─────────────────
+$bg-page:        #171B23;
+$bg-card:        #1C212C;
+$bg-panel:       #20263352;
+$border-color:   #2B3140;
+$text-primary:   #F2EFE9;
+$text-muted:     #8B93A3;
+$accent:         #D9A441;
+$accent-alt:     #D9A441;
+$score-high:     #6FBF8B;
+$score-mid:      #D9A441;
+$score-low:      #E5484D;
+$font-stack:     Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-display:   'Oswald', Arial, sans-serif;
+
+
+// ── Page Shell ─────────────────────────────────────────────────────────────
+.history-page {
+    width: 100%;
+    min-height: 100vh;
+    background-color: $bg-page;
+    color: $text-primary;
+    font-family: $font-stack;
+    padding: 3rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+}
+
+.history-header {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    h1 {
+        font-family: $font-display;
+        font-size: 1.9rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+    p {
+        color: $text-muted;
+        margin-top: 0.25rem;
+    }
+}
+
+.back-link {
+    color: $text-muted;
+    text-decoration: none;
+    font-size: 0.9rem;
+    border: 1px solid $border-color;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.15s ease;
+    background: none;
+    cursor: pointer;
+
+    &:hover {
+        border-color: $accent;
+        color: $text-primary;
+    }
+}
+
+
+// ── Attempt List ───────────────────────────────────────────────────────────
+.history-list {
+    width: 100%;
+    max-width: 900px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.history-item {
+    background-color: $bg-card;
+    border: 1px solid $border-color;
+    border-radius: 0.9rem;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+
+    &:hover {
+        border-color: $accent;
+        transform: translateY(-1px);
+    }
+}
+
+.history-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+
+    h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+    }
+
+    span {
+        color: $text-muted;
+        font-size: 0.85rem;
+    }
+}
+
+.history-item__score {
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    white-space: nowrap;
+
+    &.score--high {
+        color: $score-high;
+        background: rgba(63, 185, 80, 0.12);
+    }
+
+    &.score--mid {
+        color: $score-mid;
+        background: rgba(210, 153, 34, 0.12);
+    }
+
+    &.score--low {
+        color: $score-low;
+        background: rgba(248, 81, 73, 0.12);
+    }
+}
+
+
+// ── Empty / Loading / Error States ──────────────────────────────────────────
+.history-empty,
+.history-loading,
+.history-error {
+    width: 100%;
+    max-width: 900px;
+    text-align: center;
+    color: $text-muted;
+    background-color: $bg-card;
+    border: 1px dashed $border-color;
+    border-radius: 0.9rem;
+    padding: 3rem 1.5rem;
+
+    h3 {
+        color: $text-primary;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.history-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+
+    .spinner {
+        margin: 0;
+    }
+}
+
+.history-error {
+    border-style: solid;
+    border-color: $score-low;
+    color: $score-low;
+}
+
+
+// ── Attempt Detail Page ──────────────────────────────────────────────────────
+.attempt-detail {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.attempt-summary-card {
+    background-color: $bg-card;
+    border: 1px solid $border-color;
+    border-radius: 1rem;
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+
+    h2 {
+        font-family: $font-display;
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        text-transform: uppercase;
+    }
+
+    .attempt-summary-score {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: $accent-alt;
+    }
+}
+
+.attempt-summary-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+
+    span {
+        background: $bg-panel;
+        border: 1px solid $border-color;
+        color: $text-muted;
+        border-radius: 999px;
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+.attempt-question-card {
+    background-color: $bg-card;
+    border: 1px solid $border-color;
+    border-radius: 1rem;
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.attempt-question-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    h3 {
+        margin: 0;
+        font-size: 1.05rem;
+    }
+}
+
+.attempt-question-card__score {
+    font-weight: 700;
+    color: $accent-alt;
+    white-space: nowrap;
+}
+
+.attempt-question-card__section {
+    h4 {
+        margin: 0 0 0.35rem 0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: $text-muted;
+    }
+
+    p, li {
+        color: $text-primary;
+        line-height: 1.5;
+    }
+
+    ul {
+        margin: 0;
+        padding-left: 1.1rem;
+    }
+}

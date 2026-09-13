@@ -1,20 +1,48 @@
-.button{
+@use "./tokens" as *;
+
+.button {
 
     border: none;
     outline: none;
     padding-inline: 1.5rem;
-    padding-block: 0.75rem;
-    border-radius: 1rem;
+    padding-block: 0.7rem;
+    border-radius: $radius-sm;
     cursor: pointer;
+    font-family: $font-display;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 
-    transition: all 0.3s ease-in-out;
+    transition: $transition-fast;
 
-    &.primary-button{
-        background-color: #e1034d;
-        color: white;
+    &.primary-button {
+        background-color: $accent;
+        color: $accent-dark;
+
+        &:hover:not(:disabled) {
+            background-color: $accent-hover;
+        }
     }
 
-    &:active{
-        transform: scale(0.9);
+    &.secondary-button {
+        background: none;
+        border: 1px solid $border-strong;
+        color: $text-muted;
+
+        &:hover:not(:disabled) {
+            border-color: $accent;
+            color: $text-primary;
+        }
     }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    &:active:not(:disabled) {
+        transform: scale(0.96);
+    }
+
 }

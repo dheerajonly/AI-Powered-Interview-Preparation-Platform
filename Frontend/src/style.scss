@@ -1,3 +1,4 @@
+@use "./style/tokens" as *;
 @use "./style/button.scss";
 
 * {
@@ -10,11 +11,77 @@ html,
 body,
 #root {
     width: 100%;
-    background-color: #161616;
-    color: whitesmoke;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: $bg-page;
+    color: $text-primary;
+    font-family: $font-stack;
 }
 
-.highlight{
-    color: #d20d3b;
+.highlight {
+    color: $accent;
+}
+
+
+// ── Shared Loading Screen ────────────────────────────────────────────────────
+.loading-screen {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    background-color: $bg-page;
+    color: $text-muted;
+
+    h1 {
+        font-family: $font-display;
+        font-size: 1rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: $text-muted;
+    }
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid $border-color;
+    border-top-color: $accent;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+// ── On-Air Recording Indicator ───────────────────────────────────────────────
+// A small pulsing dot + label used wherever a live/active session is shown.
+.on-air-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: $text-muted;
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: $on-air;
+        animation: pulse 1.6s ease-in-out infinite;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
 }

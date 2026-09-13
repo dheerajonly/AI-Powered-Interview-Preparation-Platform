@@ -45,8 +45,9 @@ const Register = () => {
 
     if (loading) {
         return (
-            <main>
-                <h1>Loading.......</h1>
+            <main className='loading-screen'>
+                <div className='spinner' />
+                <h1>Creating your account...</h1>
             </main>
         )
     }

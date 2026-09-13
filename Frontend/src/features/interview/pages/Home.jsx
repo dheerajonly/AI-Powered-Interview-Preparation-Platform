@@ -155,6 +155,7 @@ const Home = () => {
     if (loading) {
         return (
             <main className='loading-screen'>
+                <div className='spinner' />
                 <h1>Loading your interview plan...</h1>
             </main>
         )
@@ -178,6 +179,16 @@ const Home = () => {
                     Let our AI analyze the job requirements and your
                     unique profile to build a winning strategy.
                 </p>
+
+                <button
+                    type='button'
+                    className='history-nav-btn'
+                    onClick={
+                        () => navigate('/practice-history')
+                    }
+                >
+                    View Practice History
+                </button>
 
             </header>
 
