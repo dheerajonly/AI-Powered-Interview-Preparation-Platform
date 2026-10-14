@@ -3,7 +3,6 @@ const pdfParse = require("pdf-parse")
 const {
     generateInterviewReport,
     generateResumePdf,
-    evaluatePracticeAnswer,
     generatePracticeQuestions,
     generatePracticeSummary,
     RateLimitError
@@ -347,401 +346,125 @@ async function generateResumePdfController(req, res) {
  * and save the question + answer + evaluation.
  */
 async function evaluatePracticeAnswerController(req, res) {
-
     try {
-
         const { interviewId } = req.params
-
-        const {
-            attemptId,
-            question,
-            answer,
-            intention
-        } = req.body
-
-
-        // Validate input
-        if (!attemptId || !question || !answer) {
-
-            return res.status(400).json({
-
-                message:
-                    "Attempt ID, question and answer are required."
-
-            })
-
+        const { attemptId, questionIndex, selectedAnswer } = req.body
+        if (!attemptId || !Number.isInteger(questionIndex) || !Number.isInteger(selectedAnswer)) {
+            return res.status(400).json({ message: "Attempt ID, question index, and selected option are required." })
         }
-
-
-        // Make sure interview belongs to logged-in user
-        const interviewReport =
-            await interviewReportModel.findOne({
-
-                _id: interviewId,
-
-                user: req.user.id
-
-            })
-
-
-        if (!interviewReport) {
-
-            return res.status(404).json({
-
-                message:
-                    "Interview report not found."
-
-            })
-
+        if (questionIndex < 0 || selectedAnswer < 0 || selectedAnswer > 3) {
+            return res.status(400).json({ message: "The selected answer is invalid." })
         }
-
-
-        // Find the practice attempt
-        const practiceAttempt =
-            await practiceAttemptModel.findOne({
-
-                _id: attemptId,
-
-                user: req.user.id,
-
-                interviewReport: interviewId
-
-            })
-
-
-        if (!practiceAttempt) {
-
-            return res.status(404).json({
-
-                message:
-                    "Practice attempt not found."
-
-            })
-
+        const [interviewReport, practiceAttempt] = await Promise.all([
+            interviewReportModel.findOne({ _id: interviewId, user: req.user.id }),
+            practiceAttemptModel.findOne({ _id: attemptId, user: req.user.id, interviewReport: interviewId })
+        ])
+        if (!interviewReport) return res.status(404).json({ message: "Interview report not found." })
+        if (!practiceAttempt) return res.status(404).json({ message: "Practice attempt not found." })
+        if (practiceAttempt.completedAt) return res.status(409).json({ message: "This test has already been submitted." })
+        const item = practiceAttempt.questions[questionIndex]
+        if (!item || !Array.isArray(item.options) || item.correctAnswer === undefined) {
+            return res.status(400).json({ message: "Question not found in this attempt." })
         }
-
-
-        // Evaluate answer using AI
-        const evaluation =
-            await evaluatePracticeAnswer({
-
-                question,
-
-                answer,
-
-                intention
-
-            })
-
-
-        // Save question + answer + evaluation
-        practiceAttempt.questions.push({
-
-            question,
-
-            answer,
-
-            score:
-                evaluation.score,
-
-            feedback:
-                evaluation.feedback,
-
-            strengths:
-                evaluation.strengths,
-
-            improvements:
-                evaluation.improvements,
-
-            idealAnswer:
-                evaluation.idealAnswer
-
-        })
-
-
-        // Save changes to MongoDB
+        item.selectedAnswer = selectedAnswer
+        item.isCorrect = selectedAnswer === item.correctAnswer
+        item.score = item.isCorrect ? 10 : 0
+        item.answer = item.options[selectedAnswer]
+        item.feedback = item.isCorrect ? "Correct answer." : "Review the explanation to strengthen this concept."
         await practiceAttempt.save()
-
-
-        // Send evaluation back to frontend
-        res.status(200).json({
-
-            message:
-                "Answer evaluated and saved successfully.",
-
-            evaluation
-
+        return res.status(200).json({
+            message: "Answer saved.",
+            result: { questionIndex, selectedAnswer, isCorrect: item.isCorrect, correctAnswer: item.correctAnswer, explanation: item.explanation, topic: item.topic }
         })
-
-
     } catch (error) {
-
-        console.error(
-            "Evaluate Practice Answer Error:",
-            error
-        )
-
-        if (error instanceof RateLimitError) {
-
-            return res.status(429).json({
-
-                message: error.message,
-
-                isDailyLimit: error.isDailyLimit
-
-            })
-
-        }
-
-        res.status(500).json({
-
-            message:
-                "Failed to evaluate practice answer."
-
-        })
-
+        console.error("Save Practice Answer Error:", error)
+        return res.status(500).json({ message: "Failed to save your answer." })
     }
-
 }
-
 
 /**
  * @description
  * Generate 4 fresh technical questions for a new practice session.
  */
 async function generatePracticeQuestionsController(req, res) {
-
     try {
-
         const { interviewId } = req.params
-
-
-        // Find the interview report belonging to logged-in user
-        const interviewReport =
-            await interviewReportModel.findOne({
-
-                _id: interviewId,
-
-                user: req.user.id
-
-            })
-
-
-        if (!interviewReport) {
-
-            return res.status(404).json({
-
-                message:
-                    "Interview report not found."
-
-            })
-
-        }
-
-
-        // Get the original technical questions
-        const previousQuestions =
-            interviewReport.technicalQuestions.map(
-                (item) => item.question
-            )
-
-
-        // Generate fresh questions
-        const practiceQuestions =
-    await generatePracticeQuestions({
-
-        jobDescription:
-            interviewReport.jobDescription,
-
-        skillGaps:
-            interviewReport.skillGaps,
-
-        previousQuestions
-
-    })
-
-
-// Create a new practice attempt
-const practiceAttempt =
-    await practiceAttemptModel.create({
-
-        user: req.user.id,
-
-        interviewReport: interviewId,
-
-        questions: [],
-
-        // These will be updated when
-        // the interview is completed.
-        overallScore: 0,
-
-        overallFeedback: "",
-
-        areasToImprove: []
-
-    })
-
-
-res.status(200).json({
-
-    message:
-        "Fresh practice questions generated successfully.",
-
-    questions:
-        practiceQuestions.questions,
-
-    attemptId:
-        practiceAttempt._id
-
-})
-
-
-    } catch (error) {
-
-        console.error(
-            "Generate Practice Questions Error:",
-            error
-        )
-
-        if (error instanceof RateLimitError) {
-
-            return res.status(429).json({
-
-                message: error.message,
-
-                isDailyLimit: error.isDailyLimit
-
-            })
-
-        }
-
-        res.status(500).json({
-
-            message:
-                "Failed to generate fresh practice questions."
-
+        const interviewReport = await interviewReportModel.findOne({ _id: interviewId, user: req.user.id })
+        if (!interviewReport) return res.status(404).json({ message: "Interview report not found." })
+        const recentAttempts = await practiceAttemptModel.find({ user: req.user.id, interviewReport: interviewId })
+            .sort({ createdAt: -1 }).limit(10).select("questions.question")
+        const previousQuestions = [
+            ...(interviewReport.technicalQuestions || []).map(item => item.question),
+            ...(interviewReport.behavioralQuestions || []).map(item => item.question),
+            ...recentAttempts.flatMap(attempt => (attempt.questions || []).map(item => item.question))
+        ].filter(Boolean).slice(-100)
+        const generated = await generatePracticeQuestions({
+            jobDescription: interviewReport.jobDescription,
+            skillGaps: interviewReport.skillGaps,
+            previousQuestions
         })
-
+        const practiceAttempt = await practiceAttemptModel.create({
+            user: req.user.id,
+            interviewReport: interviewId,
+            questions: generated.questions.map(question => ({
+                question: question.question, options: question.options,
+                correctAnswer: question.correctAnswer, explanation: question.explanation,
+                topic: question.topic, score: 0
+            }))
+        })
+        return res.status(201).json({
+            message: "A fresh MCQ test has been generated.",
+            attemptId: practiceAttempt._id,
+            questions: generated.questions.map(({ correctAnswer, explanation, ...safeQuestion }) => safeQuestion)
+        })
+    } catch (error) {
+        console.error("Generate MCQ Test Error:", error)
+        if (error instanceof RateLimitError) return res.status(429).json({ message: error.message, isDailyLimit: error.isDailyLimit })
+        return res.status(500).json({ message: "Failed to generate a fresh MCQ test. Please try again." })
     }
-
 }
-
 
 /**
  * @description
  * Complete a practice interview and save the overall result.
  */
 async function completePracticeAttemptController(req, res) {
-
     try {
-
         const { interviewId, attemptId } = req.params
-
-
-        // Find the practice attempt
-        const practiceAttempt =
-            await practiceAttemptModel.findOne({
-
-                _id: attemptId,
-
-                user: req.user.id,
-
-                interviewReport: interviewId
-
+        const practiceAttempt = await practiceAttemptModel.findOne({ _id: attemptId, user: req.user.id, interviewReport: interviewId })
+        if (!practiceAttempt) return res.status(404).json({ message: "Practice attempt not found." })
+        if (practiceAttempt.completedAt) return res.status(200).json({ message: "Practice attempt already completed.", practiceAttempt })
+        if (!practiceAttempt.questions.length) return res.status(400).json({ message: "This test has no questions." })
+        const answered = practiceAttempt.questions.filter(item => Number.isInteger(item.selectedAnswer))
+        if (answered.length !== practiceAttempt.questions.length) return res.status(400).json({ message: "Please answer every question before submitting." })
+        const correctCount = answered.filter(item => item.isCorrect).length
+        const overallScore = Math.round((correctCount / practiceAttempt.questions.length) * 100) / 10
+        let summary = null
+        try {
+            summary = await generatePracticeSummary({
+                questions: practiceAttempt.questions.map(item => ({
+                    question: item.question, topic: item.topic,
+                    answer: item.options[item.selectedAnswer], correctAnswer: item.options[item.correctAnswer],
+                    isCorrect: item.isCorrect, score: item.score, feedback: item.feedback, explanation: item.explanation
+                }))
             })
-
-
-        if (!practiceAttempt) {
-
-            return res.status(404).json({
-
-                message:
-                    "Practice attempt not found."
-
-            })
-
+        } catch (summaryError) {
+            // Save the scored test even if Gemini is temporarily unavailable.
+            console.error("AI overall feedback unavailable:", summaryError.message)
         }
-
-
-        // Make sure at least one question has been answered
-        if (practiceAttempt.questions.length === 0) {
-
-            return res.status(400).json({
-
-                message:
-                    "No answered questions found."
-
-            })
-
-        }
-
-
-        // Generate overall practice summary using AI
-        const summary =
-            await generatePracticeSummary({
-
-                questions:
-                    practiceAttempt.questions
-
-            })
-
-
-        // Save AI-generated final result
-        practiceAttempt.overallScore =
-            summary.overallScore
-
-        practiceAttempt.overallFeedback =
-            summary.overallFeedback
-
-        practiceAttempt.areasToImprove =
-            summary.areasToImprove
-
-
-        // Save final result to MongoDB
+        const incorrectTopics = [...new Set(practiceAttempt.questions.filter(item => !item.isCorrect).map(item => item.topic || "General"))]
+        practiceAttempt.overallScore = overallScore
+        practiceAttempt.overallFeedback = summary?.overallFeedback || `You answered ${correctCount} of ${practiceAttempt.questions.length} questions correctly (${Math.round(overallScore * 10)}%). Review the explanations for missed questions and try another fresh test.`
+        practiceAttempt.areasToImprove = summary?.areasToImprove?.length ? summary.areasToImprove : incorrectTopics.map(topic => `Review core concepts in ${topic}.`)
+        practiceAttempt.completedAt = new Date()
         await practiceAttempt.save()
-
-
-        res.status(200).json({
-
-            message:
-                "Practice attempt completed successfully.",
-
-            practiceAttempt
-
-        })
-
-
+        return res.status(200).json({ message: "Test submitted successfully.", practiceAttempt })
     } catch (error) {
-
-        console.error(
-            "Complete Practice Attempt Error:",
-            error
-        )
-
-        if (error instanceof RateLimitError) {
-
-            return res.status(429).json({
-
-                message: error.message,
-
-                isDailyLimit: error.isDailyLimit
-
-            })
-
-        }
-
-        res.status(500).json({
-
-            message:
-                "Failed to complete practice attempt."
-
-        })
-
+        console.error("Complete MCQ Test Error:", error)
+        if (error instanceof RateLimitError) return res.status(429).json({ message: error.message, isDailyLimit: error.isDailyLimit })
+        return res.status(500).json({ message: "Failed to generate your overall feedback. Please retry submission." })
     }
-
 }
-
-
 
 /**
  * @description
@@ -750,63 +473,40 @@ async function completePracticeAttemptController(req, res) {
  * Returns lightweight summaries for a history list view.
  */
 async function getPracticeHistoryController(req, res) {
-
     try {
-
         const { interviewId } = req.query
+        const filter = { user: req.user.id }
+        if (interviewId) filter.interviewReport = interviewId
 
-        const filter = {
-            user: req.user.id
-        }
+        const attempts = await practiceAttemptModel.find(filter)
+            .sort({ createdAt: -1 })
+            .populate("interviewReport", "title")
+            .lean()
 
-        if (interviewId) {
-            filter.interviewReport = interviewId
-        }
+        // Return only analytics-safe fields. Answer keys are never included in this endpoint.
+        const practiceAttempts = attempts.map(attempt => ({
+            _id: attempt._id,
+            user: attempt.user,
+            interviewReport: attempt.interviewReport,
+            overallScore: attempt.overallScore,
+            overallFeedback: attempt.overallFeedback,
+            areasToImprove: attempt.areasToImprove,
+            completedAt: attempt.completedAt,
+            durationSeconds: attempt.durationSeconds,
+            createdAt: attempt.createdAt,
+            updatedAt: attempt.updatedAt,
+            questions: (attempt.questions || []).map(item => ({
+                topic: item.topic || "General",
+                ...(attempt.completedAt ? { isCorrect: Boolean(item.isCorrect) } : {})
+            }))
+        }))
 
-
-        const practiceAttempts =
-            await practiceAttemptModel
-                .find(filter)
-                .sort({
-                    createdAt: -1
-                })
-                .select(
-                    "-questions.answer -questions.feedback -questions.strengths -questions.improvements -questions.idealAnswer -__v"
-                )
-                .populate(
-                    "interviewReport",
-                    "title"
-                )
-
-
-        res.status(200).json({
-
-            message:
-                "Practice history fetched successfully.",
-
-            practiceAttempts
-
-        })
-
-
+        return res.status(200).json({ message: "Practice history fetched successfully.", practiceAttempts })
     } catch (error) {
-
-        console.error(
-            "Get Practice History Error:",
-            error
-        )
-
-        res.status(500).json({
-
-            message:
-                "Failed to fetch practice history."
-
-        })
-
+        console.error("Get Practice History Error:", error)
+        return res.status(500).json({ message: "Failed to fetch practice history." })
     }
-
 }
-
 
 
 /**
@@ -836,19 +536,13 @@ async function getPracticeAttemptByIdController(req, res) {
 
 
         if (!practiceAttempt) {
-
-            return res.status(404).json({
-
-                message:
-                    "Practice attempt not found."
-
-            })
-
+            return res.status(404).json({ message: "Practice attempt not found." })
+        }
+        if (!practiceAttempt.completedAt && practiceAttempt.questions.some(item => item.correctAnswer !== undefined)) {
+            return res.status(409).json({ message: "Submit this test before reviewing its answers." })
         }
 
-
         res.status(200).json({
-
             message:
                 "Practice attempt fetched successfully.",
 

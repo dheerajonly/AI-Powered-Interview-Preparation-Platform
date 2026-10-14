@@ -1,630 +1,82 @@
-import React, { useState, useRef } from 'react'
-import "../style/home.scss"
-import { useInterview } from '../hooks/useInterview.js'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-
+import { useInterview } from '../hooks/useInterview.js'
+import { useAuth } from '../../auth/hooks/useAuth.js'
+import '../style/home.scss'
 
 const Home = () => {
+  const { loading, generateReport, reports, loadError } = useInterview()
+  const { user, handleLogout } = useAuth()
+  const navigate = useNavigate()
+  const fileInput = useRef(null)
+  const [jobDescription, setJobDescription] = useState('')
+  const [selfDescription, setSelfDescription] = useState('')
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [error, setError] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
 
-    const { loading, generateReport, reports } = useInterview()
-
-    const [jobDescription, setJobDescription] = useState("")
-    const [selfDescription, setSelfDescription] = useState("")
-    const [selectedFile, setSelectedFile] = useState(null)
-    const [error, setError] = useState("")
-
-    const resumeInputRef = useRef()
-
-    const navigate = useNavigate()
-
-
-    // ---------------------------------------
-    // Handle file selection
-    // ---------------------------------------
-    const handleFileChange = (e) => {
-
-        const file = e.target.files[0]
-
-        if (!file) return
-
-        setError("")
-
-        // Check file type
-        const allowedTypes = [
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ]
-
-        if (!allowedTypes.includes(file.type)) {
-            setError("Please upload a PDF or DOCX file.")
-            e.target.value = ""
-            return
-        }
-
-        // Check file size (5 MB)
-        const maxSize = 5 * 1024 * 1024
-
-        if (file.size > maxSize) {
-            setError("Resume must be smaller than 5 MB.")
-            e.target.value = ""
-            return
-        }
-
-        setSelectedFile(file)
+  const chooseFile = file => {
+    if (!file) return
+    setError('')
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setSelectedFile(null)
+      if (fileInput.current) fileInput.current.value = ''
+      setError('Please upload a PDF resume. DOCX files are not supported by the current resume parser.')
+      return
     }
-
-
-    // ---------------------------------------
-    // Handle drag & drop
-    // ---------------------------------------
-    const handleDrop = (e) => {
-
-        e.preventDefault()
-
-        const file = e.dataTransfer.files[0]
-
-        if (!file) return
-
-        setError("")
-
-        // Check file type
-        const allowedTypes = [
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ]
-
-        if (!allowedTypes.includes(file.type)) {
-            setError("Please upload a PDF or DOCX file.")
-            return
-        }
-
-        // Check file size
-        const maxSize = 5 * 1024 * 1024
-
-        if (file.size > maxSize) {
-            setError("Resume must be smaller than 5 MB.")
-            return
-        }
-
-        setSelectedFile(file)
+    if (file.size > 5 * 1024 * 1024) {
+      setSelectedFile(null)
+      if (fileInput.current) fileInput.current.value = ''
+      setError('Your resume must be 5 MB or smaller.')
+      return
     }
+    setSelectedFile(file)
+  }
 
-
-    // ---------------------------------------
-    // Remove selected resume
-    // ---------------------------------------
-    const handleRemoveFile = () => {
-
-        setSelectedFile(null)
-        setError("")
-
-        if (resumeInputRef.current) {
-            resumeInputRef.current.value = ""
-        }
+  const handleGenerate = async event => {
+    event.preventDefault()
+    setError('')
+    if (!jobDescription.trim()) return setError('Add the target job description to continue.')
+    if (!selectedFile && !selfDescription.trim()) return setError('Upload a PDF resume or describe your current skills.')
+    try {
+      const report = await generateReport({ jobDescription: jobDescription.trim(), selfDescription: selfDescription.trim(), resumeFile: selectedFile })
+      if (report?._id) navigate(`/interview/${report._id}`)
+      else setError('Your plan could not be created. Please try again.')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong while generating your plan.')
     }
-
-
-    // ---------------------------------------
-    // Generate interview report
-    // ---------------------------------------
-    const handleGenerateReport = async () => {
-
-        setError("")
-
-        // Job description required
-        if (!jobDescription.trim()) {
-            setError("Please enter a job description.")
-            return
-        }
-
-        // Either resume OR self description required
-        if (!selectedFile && !selfDescription.trim()) {
-            setError("Please upload a resume or enter a self-description.")
-            return
-        }
-
-        try {
-
-            const data = await generateReport({
-                jobDescription,
-                selfDescription,
-                resumeFile: selectedFile
-            })
-
-            if (data && data._id) {
-                navigate(`/interview/${data._id}`)
-            } else {
-                setError("Unable to generate interview plan. Please try again.")
-            }
-
-        } catch (err) {
-
-            console.log("Generate Report Error:", err)
-
-            setError(
-                err.response?.data?.message ||
-                "Something went wrong while generating your interview plan."
-            )
-        }
-    }
-
-
-    // ---------------------------------------
-    // Loading screen
-    // ---------------------------------------
-    if (loading) {
-        return (
-            <main className='loading-screen'>
-                <div className='spinner' />
-                <h1>Loading your interview plan...</h1>
-            </main>
-        )
-    }
-
-
-    return (
-        <div className='home-page'>
-
-            {/* --------------------------------
-                Page Header
-            -------------------------------- */}
-            <header className='page-header'>
-
-                <h1>
-                    Create Your Custom
-                    <span className='highlight'> Interview Plan</span>
-                </h1>
-
-                <p>
-                    Let our AI analyze the job requirements and your
-                    unique profile to build a winning strategy.
-                </p>
-
-                <button
-                    type='button'
-                    className='history-nav-btn'
-                    onClick={
-                        () => navigate('/practice-history')
-                    }
-                >
-                    View Practice History
-                </button>
-
-            </header>
-
-
-            {/* --------------------------------
-                Main Interview Card
-            -------------------------------- */}
-            <div className='interview-card'>
-
-                <div className='interview-card__body'>
-
-
-                    {/* --------------------------------
-                        LEFT PANEL
-                        Job Description
-                    -------------------------------- */}
-                    <div className='panel panel--left'>
-
-                        <div className='panel__header'>
-
-                            <span className='panel__icon'>
-
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <rect
-                                        x="2"
-                                        y="7"
-                                        width="20"
-                                        height="14"
-                                        rx="2"
-                                        ry="2"
-                                    />
-
-                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                                </svg>
-
-                            </span>
-
-                            <h2>Target Job Description</h2>
-
-                            <span className='badge badge--required'>
-                                Required
-                            </span>
-
-                        </div>
-
-
-                        <textarea
-                            value={jobDescription}
-                            onChange={(e) => setJobDescription(e.target.value)}
-                            className='panel__textarea'
-                            placeholder={`Paste the full job description here...
-e.g. 'Senior Frontend Engineer at Google requires proficiency in React, TypeScript, and large-scale system design...'`}
-                            maxLength={5000}
-                        />
-
-
-                        <div className='char-counter'>
-                            {jobDescription.length} / 5000 chars
-                        </div>
-
-                    </div>
-
-
-                    {/* --------------------------------
-                        Vertical Divider
-                    -------------------------------- */}
-                    <div className='panel-divider' />
-
-
-                    {/* --------------------------------
-                        RIGHT PANEL
-                        User Profile
-                    -------------------------------- */}
-                    <div className='panel panel--right'>
-
-                        <div className='panel__header'>
-
-                            <span className='panel__icon'>
-
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="18"
-                                    height="18"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                    <circle
-                                        cx="12"
-                                        cy="7"
-                                        r="4"
-                                    />
-                                </svg>
-
-                            </span>
-
-                            <h2>Your Profile</h2>
-
-                        </div>
-
-
-                        {/* --------------------------------
-                            Upload Resume
-                        -------------------------------- */}
-                        <div className='upload-section'>
-
-                            <label className='section-label'>
-
-                                Upload Resume
-
-                                <span className='badge badge--best'>
-                                    Best Results
-                                </span>
-
-                            </label>
-
-
-                            {/* Dropzone */}
-                            <div
-                                className={`dropzone ${selectedFile ? 'dropzone--selected' : ''}`}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={handleDrop}
-                            >
-
-                                {/* Hidden file input */}
-                                <input
-                                    ref={resumeInputRef}
-                                    hidden
-                                    type='file'
-                                    id='resume'
-                                    name='resume'
-                                    accept='.pdf,.docx'
-                                    onChange={handleFileChange}
-                                />
-
-
-                                {!selectedFile ? (
-
-                                    /* --------------------------------
-                                       No file selected
-                                    -------------------------------- */
-                                    <label
-                                        htmlFor='resume'
-                                        className='dropzone__content'
-                                    >
-
-                                        <span className='dropzone__icon'>
-                                            ↑
-                                        </span>
-
-                                        <p className='dropzone__title'>
-                                            Click to upload or drag & drop
-                                        </p>
-
-                                        <p className='dropzone__subtitle'>
-                                            PDF or DOCX (Max 5MB)
-                                        </p>
-
-                                    </label>
-
-                                ) : (
-
-                                    /* --------------------------------
-                                       File selected
-                                    -------------------------------- */
-                                    <div className='dropzone__content'>
-
-                                        <span className='dropzone__icon'>
-                                            📄
-                                        </span>
-
-                                        <p className='dropzone__title'>
-                                            {selectedFile.name}
-                                        </p>
-
-                                        <p className='dropzone__subtitle'>
-                                            {
-                                                (
-                                                    selectedFile.size /
-                                                    1024 /
-                                                    1024
-                                                ).toFixed(2)
-                                            } MB
-                                        </p>
-
-
-                                        <button
-                                            type='button'
-                                            className='remove-file-btn'
-                                            onClick={handleRemoveFile}
-                                        >
-                                            Remove resume
-                                        </button>
-
-                                    </div>
-
-                                )}
-
-                            </div>
-
-                        </div>
-
-
-                        {/* --------------------------------
-                            Error Message
-                        -------------------------------- */}
-                        {error && (
-                            <div className='home-error'>
-                                {error}
-                            </div>
-                        )}
-
-
-                        {/* --------------------------------
-                            OR Divider
-                        -------------------------------- */}
-                        <div className='or-divider'>
-                            <span>OR</span>
-                        </div>
-
-
-                        {/* --------------------------------
-                            Self Description
-                        -------------------------------- */}
-                        <div className='self-description'>
-
-                            <label
-                                className='section-label'
-                                htmlFor='selfDescription'
-                            >
-                                Quick Self-Description
-                            </label>
-
-
-                            <textarea
-                                value={selfDescription}
-                                onChange={(e) => setSelfDescription(e.target.value)}
-                                id='selfDescription'
-                                name='selfDescription'
-                                className='panel__textarea panel__textarea--short'
-                                placeholder="Briefly describe your experience, key skills, and years of experience if you don't have a resume handy..."
-                            />
-
-                        </div>
-
-
-                        {/* --------------------------------
-                            Info Box
-                        -------------------------------- */}
-                        <div className='info-box'>
-
-                            <span className='info-box__icon'>
-
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                >
-
-                                    <circle
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                    />
-
-                                    <line
-                                        x1="12"
-                                        y1="8"
-                                        x2="12"
-                                        y2="12"
-                                        stroke="#1a1f27"
-                                        strokeWidth="2"
-                                    />
-
-                                    <line
-                                        x1="12"
-                                        y1="16"
-                                        x2="12.01"
-                                        y2="16"
-                                        stroke="#1a1f27"
-                                        strokeWidth="2"
-                                    />
-
-                                </svg>
-
-                            </span>
-
-                            <p>
-                                Either a <strong>Resume</strong> or a
-                                <strong> Self Description</strong> is required
-                                to generate a personalized plan.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                {/* --------------------------------
-                    Card Footer
-                -------------------------------- */}
-                <div className='interview-card__footer'>
-
-                    <span className='footer-info'>
-                        AI-Powered Strategy Generation
-                        &bull;
-                        Approx 30s
-                    </span>
-
-
-                    <button
-                        onClick={handleGenerateReport}
-                        className='generate-btn'
-                    >
-
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
-                        </svg>
-
-                        Generate My Interview Strategy
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            {/* --------------------------------
-                Recent Reports
-            -------------------------------- */}
-            {reports.length > 0 && (
-
-                <section className='recent-reports'>
-
-                    <h2>
-                        My Recent Interview Plans
-                    </h2>
-
-
-                    <ul className='reports-list'>
-
-                        {reports.map(report => (
-
-                            <li
-                                key={report._id}
-                                className='report-item'
-                                onClick={() =>
-                                    navigate(`/interview/${report._id}`)
-                                }
-                            >
-
-                                <h3>
-                                    {report.title || 'Untitled Position'}
-                                </h3>
-
-
-                                <p className='report-meta'>
-                                    Generated on{" "}
-                                    {new Date(
-                                        report.createdAt
-                                    ).toLocaleDateString()}
-                                </p>
-
-
-                                <p
-                                    className={
-                                        `match-score ${
-                                            report.matchScore >= 80
-                                                ? 'score--high'
-                                                : report.matchScore >= 60
-                                                    ? 'score--mid'
-                                                    : 'score--low'
-                                        }`
-                                    }
-                                >
-                                    Match Score: {report.matchScore}%
-                                </p>
-
-                            </li>
-
-                        ))}
-
-                    </ul>
-
-                </section>
-
-            )}
-
-
-            {/* --------------------------------
-                Page Footer
-            -------------------------------- */}
-            <footer className='page-footer'>
-
-                <a href='#'>
-                    Privacy Policy
-                </a>
-
-                <a href='#'>
-                    Terms of Service
-                </a>
-
-                <a href='#'>
-                    Help Center
-                </a>
-
-            </footer>
-
-        </div>
-    )
+  }
+
+  const logout = async () => {
+    setLoggingOut(true)
+    await handleLogout()
+    navigate('/login')
+    setLoggingOut(false)
+  }
+
+  return <main className="home-page">
+    <header className="dashboard-nav">
+      <button className="brand-lockup" onClick={() => navigate('/')}><span className="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3Z"/></svg></span><span>Prepwise<span className="brand-dot">.</span></span></button>
+      <nav className="dashboard-nav-links"><button onClick={() => navigate('/practice-history')}>Performance</button><button onClick={() => navigate('/practice-history')}>Practice history</button></nav>
+      <div className="dashboard-user"><div className="avatar-circle">{(user?.username || user?.name || 'U').slice(0, 1).toUpperCase()}</div><span>{user?.username || user?.name || 'Your workspace'}</span><button className="logout-button" onClick={logout} disabled={loggingOut}>{loggingOut ? 'Signing out…' : 'Log out'}</button></div>
+    </header>
+
+    <section className="dashboard-welcome"><div><span className="eyebrow"><span className="status-dot"/> YOUR INTERVIEW WORKSPACE</span><h1>Make your next interview <span>your best one.</span></h1><p>Build a focused preparation plan, practice with fresh AI-generated MCQs, and see your progress over time.</p></div><div className="welcome-decoration"><div className="welcome-orb orb-a"/><div className="welcome-orb orb-b"/><div className="welcome-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/></svg></div></div></section>
+
+    {loadError && <div className="inline-alert" role="alert">{loadError}</div>}
+
+    <section className="dashboard-stat-grid"><article className="dashboard-stat"><span className="stat-icon stat-icon-violet">✦</span><span>Interview plans</span><strong>{reports?.length || 0}</strong><small>Personalized to your target roles</small></article><article className="dashboard-stat"><span className="stat-icon stat-icon-green">↗</span><span>Practice analytics</span><strong>Track</strong><small>Scores, strengths, and topic gaps</small><button className="text-action" onClick={() => navigate('/practice-history')}>View analytics →</button></article><article className="dashboard-stat"><span className="stat-icon stat-icon-amber">✓</span><span>Next step</span><strong>Practice</strong><small>Turn your plan into test-ready skills</small></article></section>
+
+    <section className="create-layout"><div className="create-intro"><span className="eyebrow">START PREPARING</span><h2>Create your personalized plan</h2><p>Tell us about the role you're targeting and share your current experience. We'll build a preparation plan and likely interview questions for you.</p><div className="create-benefit"><span>01</span><div><strong>Understand the role</strong><p>AI identifies the skills and expectations in the job description.</p></div></div><div className="create-benefit"><span>02</span><div><strong>Find your focus</strong><p>See profile gaps and a structured preparation roadmap.</p></div></div><div className="create-benefit"><span>03</span><div><strong>Practice and improve</strong><p>Attempt MCQs, review feedback, and track your progress.</p></div></div></div>
+      <form className="create-form" onSubmit={handleGenerate}><div className="form-card-heading"><div><span className="eyebrow">NEW INTERVIEW PLAN</span><h3>Let's get started</h3></div><span className="step-badge">Step 1 of 1</span></div>
+        <label className="field-label" htmlFor="job-description">Target job description <span>Required</span></label><textarea id="job-description" rows="5" value={jobDescription} onChange={e => setJobDescription(e.target.value)} placeholder="Paste the job description, responsibilities, and required skills…" required/>
+        <div className="field-label resume-label">Your resume <span>PDF · max 5 MB</span></div><input ref={fileInput} type="file" accept="application/pdf,.pdf" className="visually-hidden" onChange={e => chooseFile(e.target.files?.[0])}/><button type="button" className={`upload-dropzone ${selectedFile ? 'has-file' : ''}`} onClick={() => fileInput.current?.click()}><span className="upload-icon">{selectedFile ? '✓' : '↑'}</span><span><strong>{selectedFile ? selectedFile.name : 'Upload your resume'}</strong><small>{selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB · Click to replace` : 'Click to browse PDF files'}</small></span><span className="upload-action">{selectedFile ? 'Change' : 'Browse'}</span></button><div className="form-divider"><span>OR</span></div><label className="field-label" htmlFor="self-description">Describe your current skills <span>Optional if resume uploaded</span></label><textarea id="self-description" rows="3" value={selfDescription} onChange={e => setSelfDescription(e.target.value)} placeholder="Your skills, projects, experience, or topics you're comfortable with…"/>
+        {error && <div className="inline-alert" role="alert">{error}</div>}<button className="button button-primary button-large create-submit" type="submit" disabled={loading}>{loading ? 'Building your plan…' : 'Generate interview plan'} <span aria-hidden="true">→</span></button><p className="form-footnote">Your plan is saved privately to your account.</p>
+      </form></section>
+
+    <section className="recent-plans"><div className="section-title"><div><span className="eyebrow">PICK UP WHERE YOU LEFT OFF</span><h2>Your recent interview plans</h2></div><button className="text-action" onClick={() => navigate('/practice-history')}>View performance →</button></div>{!reports?.length ? <div className="empty-plans"><span>✦</span><h3>Your preparation journey starts here</h3><p>Create your first plan to see your target role, preparation roadmap, and practice tests here.</p></div> : <div className="recent-plan-grid">{reports.slice(0, 3).map(report => <article className="recent-plan-card" key={report._id}><span className="recent-plan-icon">↗</span><span className="recent-plan-date">{report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'Interview plan'}</span><h3>{report.title || 'Interview preparation'}</h3><p>Profile match <strong>{Math.round(report.matchScore || 0)}%</strong></p><button className="text-action" onClick={() => navigate(`/interview/${report._id}`)}>Open plan →</button></article>)}</div>}</section>
+    <footer className="dashboard-footer"><span>Prepwise<span className="brand-dot">.</span></span><span>Prepare with purpose.</span></footer>
+  </main>
 }
-
 
 export default Home
