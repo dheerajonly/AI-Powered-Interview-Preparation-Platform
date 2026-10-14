@@ -69,7 +69,7 @@ interviewRouter.post(
 /**
  * @route POST /api/interview/practice/:interviewId/evaluate
  * @description
- * Evaluate a candidate's answer during a practice interview.
+ * Save a candidate's selected MCQ answer for the active test.
  * @access private
  */
 interviewRouter.post(
@@ -83,7 +83,7 @@ interviewRouter.post(
 /**
  * @route POST /api/interview/practice/:interviewId/questions
  * @description
- * Generate 4 fresh technical questions for a new practice session.
+ * Generate a fresh 10-question MCQ test for a new practice session.
  * @access private
  */
 interviewRouter.post(
@@ -97,7 +97,7 @@ interviewRouter.post(
 /**
  * @route POST /api/interview/practice/:interviewId/attempt/:attemptId/complete
  * @description
- * Complete a practice interview and save the overall result.
+ * Submit an MCQ test and save its score and AI feedback.
  * @access private
  */
 interviewRouter.post(

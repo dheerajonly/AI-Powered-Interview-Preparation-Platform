@@ -1,10 +1,14 @@
-require("dotenv").config()
-const app = require("./src/app")
-const connectToDB = require("./src/config/database")
+require('dotenv').config()
+const app = require('./src/app')
+const connectToDB = require('./src/config/database')
+
+const port = Number(process.env.PORT) || 3000
 
 connectToDB()
-
-
-app.listen(3000, () => {
-    console.log("Server is running on port 3000")
-})
+  .then(() => {
+    app.listen(port, () => console.log(`API server listening on http://localhost:${port}`))
+  })
+  .catch(error => {
+    console.error('Unable to start the API:', error.message)
+    process.exit(1)
+  })

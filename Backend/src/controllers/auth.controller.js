@@ -11,15 +11,16 @@ const tokenBlacklistModel = require("../models/blacklist.model")
 async function registerUserController(req, res) {
 
     const { username, email, password } = req.body
+    const normalizedUsername = typeof username === "string" ? username.trim() : ""
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : ""
 
-    if (!username || !email || !password) {
-        return res.status(400).json({
-            message: "Please provide username, email and password"
-        })
+    if (!normalizedUsername || !normalizedEmail || typeof password !== "string" || password.length < 8) {
+        return res.status(400).json({ message: "Provide a username, valid email, and password with at least 8 characters." })
     }
 
+
     const isUserAlreadyExists = await userModel.findOne({
-        $or: [ { username }, { email } ]
+        $or: [ { username: normalizedUsername }, { email: normalizedEmail } ]
     })
 
     if (isUserAlreadyExists) {
@@ -31,8 +32,8 @@ async function registerUserController(req, res) {
     const hash = await bcrypt.hash(password, 10)
 
     const user = await userModel.create({
-        username,
-        email,
+        username: normalizedUsername,
+        email: normalizedEmail,
         password: hash
     })
 
@@ -42,7 +43,12 @@ async function registerUserController(req, res) {
         { expiresIn: "1d" }
     )
 
-    res.cookie("token", token)
+    res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 24 * 60 * 60 * 1000
+    })
 
 
     res.status(201).json({
@@ -65,8 +71,10 @@ async function registerUserController(req, res) {
 async function loginUserController(req, res) {
 
     const { email, password } = req.body
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : ""
+    if (!normalizedEmail || typeof password !== "string") return res.status(400).json({ message: "Email and password are required." })
 
-    const user = await userModel.findOne({ email })
+    const user = await userModel.findOne({ email: normalizedEmail })
 
     if (!user) {
         return res.status(400).json({
@@ -88,7 +96,12 @@ async function loginUserController(req, res) {
         { expiresIn: "1d" }
     )
 
-    res.cookie("token", token)
+    res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 24 * 60 * 60 * 1000
+    })
     res.status(200).json({
         message: "User loggedIn successfully.",
         user: {
@@ -112,7 +125,7 @@ async function logoutUserController(req, res) {
         await tokenBlacklistModel.create({ token })
     }
 
-    res.clearCookie("token")
+    res.clearCookie("token", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" })
 
     res.status(200).json({
         message: "User logged out successfully"

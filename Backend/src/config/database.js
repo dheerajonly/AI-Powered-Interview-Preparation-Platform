@@ -1,17 +1,10 @@
-const mongoose = require("mongoose")
-
-
+const mongoose = require('mongoose')
 
 async function connectToDB() {
-
-    try {
-        await mongoose.connect(process.env.MONGO_URI)
-
-        console.log("Connected to Database")
-    }
-    catch (err) {
-        console.log(err)
-    }
+  const uri = process.env.MONGO_URI
+  if (!uri) throw new Error('MONGO_URI is missing. Copy Backend/.env.example to Backend/.env and configure your database.')
+  await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 })
+  console.log('Connected to MongoDB')
 }
 
 module.exports = connectToDB
